@@ -31,13 +31,26 @@ async def read_todos(
     return todos
 
 
-@router.post("/create")
+
+@router.post("/create", response_model=TodoCreateResponse)
 async def create_todo(
     todo: TodoCreate,
     db: Session = Depends(get_db),
 ):
     """Create a new todo item."""
-    return
+    try:
+       
+        last = db.query(Todo).order_by(desc(Todo.order)).first()
+        next_order = last.order + 1 if last else 0
+
+        new_todo = Todo(name=todo.name, completed=todo.completed, order=next_order)
+        db.add(new_todo)
+        db.commit()
+        db.refresh(new_todo) 
+        return TodoCreateResponse(success=True, created_todo=new_todo)
+    except Exception as e:
+        db.rollback()
+        return TodoCreateResponse(success=False, error=str(e))
 
 
 @router.patch("/update/{todo_id}")
